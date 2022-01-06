@@ -1,0 +1,123 @@
+image: node:lts
+pipelines:
+  branches:
+    develop:
+      - parallel:
+          - step:
+              size: 2x
+              name: Build
+              caches:
+                - node
+              script:
+                - yarn install
+                - export NODE_OPTIONS=--max-old-space-size=8192
+                - CI=false yarn build
+              artifacts:
+                - build/**
+          - step:
+              name: Security Scan
+              script:
+                - pipe: atlassian/git-secrets-scan:0.4.3
+      - step:
+          name: Deploy to Staging
+          deployment: Staging
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:0.4.4
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: $BUCKET_NAME
+                LOCAL_PATH: 'build'
+    casper-app:
+      - parallel:
+          - step:
+              size: 2x
+              name: Build
+              caches:
+                - node
+              script:
+                - yarn install
+                - export NODE_OPTIONS=--max-old-space-size=8192
+                - CI=false yarn build
+              artifacts:
+                - build/**
+          - step:
+              name: Security Scan
+              script:
+                - pipe: atlassian/git-secrets-scan:0.4.3
+      - step:
+          name: Deploy to Staging
+          deployment: Test
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:0.4.4
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: $BUCKET_NAME
+                LOCAL_PATH: 'build'
+    dln-start:
+      - parallel:
+          - step:
+              size: 2x
+              name: Build
+              caches:
+                - node
+              script:
+                - yarn install
+                - export NODE_OPTIONS=--max-old-space-size=8192
+                - CI=false yarn build
+              artifacts:
+                - build/**
+          - step:
+              name: Security Scan
+              script:
+                - pipe: atlassian/git-secrets-scan:0.4.3
+      - step:
+          name: Deploy to Test
+          deployment: Test
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:0.4.4
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: 'start.dlndao.org'
+                LOCAL_PATH: 'build'
+    master:
+      - parallel:
+          - step:
+              size: 2x
+              name: Build
+              caches:
+                - node
+              script:
+                - yarn install
+                - export NODE_OPTIONS=--max-old-space-size=6144
+                - CI=false yarn build
+              artifacts:
+                - build/**
+          - step:
+              name: Security Scan
+              script:
+                - pipe: atlassian/git-secrets-scan:0.4.3
+      - step:
+          name: Deploy to Production
+          deployment: Production
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:0.4.4
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: $BUCKET_NAME
+                LOCAL_PATH: 'build'
